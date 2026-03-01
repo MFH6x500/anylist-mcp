@@ -58,8 +58,7 @@ export class AnyListClient {
   }
 
   async createEvent(event: { title?: string; date?: Date | string; recipeId?: string; labelId?: string }) {
-    await this.ensureConnected();
-    return this.client.createEvent(event);
+    return this.withReconnect(() => this.client.createEvent(event));
   }
 
   createItem(item: { name: string; quantity?: string }) {
