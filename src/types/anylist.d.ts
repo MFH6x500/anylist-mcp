@@ -31,7 +31,8 @@ declare module 'anylist' {
     identifier: string;
     name: string;
     items: Item[];
-    addItem(item: Item, isFavorite?: boolean): Promise<Item>;
+    addItem(item: Item): Promise<Item>;
+    addIngredient(ingredient: Ingredient, options: { recipeId: string; recipeName: string; eventId?: string; eventDate?: string }): Promise<void>;
     removeItem(item: Item, isFavorite?: boolean): Promise<void>;
     getItemById(identifier: string): Item | undefined;
     getItemByName(name: string): Item | undefined;
