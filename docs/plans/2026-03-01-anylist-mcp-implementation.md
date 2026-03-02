@@ -22,7 +22,6 @@
 
 Run:
 ```bash
-cd /Users/david/code/anylist-mcp
 npm init -y
 npm install anylist @modelcontextprotocol/server zod
 npm install -D typescript @types/node tsx
@@ -1003,7 +1002,6 @@ git commit -m "feat: add MCP server entry point with all tool registrations"
 
 Run:
 ```bash
-cd /Users/david/code/anylist-mcp
 npx tsc
 ```
 
@@ -1013,7 +1011,6 @@ Expected: Clean compilation, no errors. Fix any type errors that arise.
 
 Run (will fail to connect to AnyList without real credentials, but should load):
 ```bash
-cd /Users/david/code/anylist-mcp
 echo '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2024-11-05","capabilities":{},"clientInfo":{"name":"test","version":"0.1.0"}}}' | ANYLIST_EMAIL=test@test.com ANYLIST_PASSWORD=test node dist/index.js
 ```
 
@@ -1043,7 +1040,7 @@ Create file `claude-desktop-config.json` showing the user how to add this server
   "mcpServers": {
     "anylist": {
       "command": "node",
-      "args": ["/Users/david/code/anylist-mcp/dist/index.js"],
+      "args": ["/path/to/anylist-mcp/dist/index.js"],
       "env": {
         "ANYLIST_EMAIL": "your-email@example.com",
         "ANYLIST_PASSWORD": "your-password"

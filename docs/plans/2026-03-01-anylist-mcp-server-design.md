@@ -6,7 +6,7 @@ An MCP server that wraps the unofficial [AnyList API](https://github.com/kevdliu
 
 ## Decisions
 
-- **Location:** `/Users/david/code/anylist-mcp`
+- **Location:** Project root
 - **Runtime:** TypeScript on Node.js
 - **Auth:** Environment variables (`ANYLIST_EMAIL`, `ANYLIST_PASSWORD`)
 - **Transport:** stdio (standard for Claude Desktop)
