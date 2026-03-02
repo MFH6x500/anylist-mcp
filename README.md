@@ -13,22 +13,20 @@ A [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) server that c
 
 - Node.js >= 18
 - An AnyList account (email/password)
-- A local copy of the [anylist](https://github.com/codetheweb/anylist) API wrapper (see [Setup](#setup))
 
 ## Setup
 
-1. Clone this repository and the anylist API wrapper side by side:
+1. Clone this repository:
 
    ```
    git clone <this-repo> anylist-mcp
-   git clone https://github.com/codetheweb/anylist anylist
+   cd anylist-mcp
    ```
 
-2. Install dependencies in both:
+2. Install dependencies:
 
    ```
-   cd anylist && npm install && cd ..
-   cd anylist-mcp && npm install
+   npm install
    ```
 
 3. Build:
