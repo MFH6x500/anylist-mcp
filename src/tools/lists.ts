@@ -140,9 +140,11 @@ export function registerListTools(server: McpServer) {
         recipe_id: z.string().optional().describe('Recipe identifier'),
         ingredient_name: z.string().describe('Name of the ingredient to add (matched against recipe ingredients)'),
         list_name: z.string().default('Groceries').describe('Target list name (defaults to "Groceries")'),
+        event_id: z.string().optional().describe('Meal plan event identifier to link this ingredient to'),
+        event_date: z.string().optional().describe('Meal plan event date in YYYY-MM-DD format'),
       }),
     },
-    async ({ recipe_name, recipe_id, ingredient_name, list_name }) => {
+    async ({ recipe_name, recipe_id, ingredient_name, list_name, event_id, event_date }) => {
       try {
         if (!recipe_name && !recipe_id) {
           return {
@@ -197,6 +199,8 @@ export function registerListTools(server: McpServer) {
         await list.addIngredient(ingredient, {
           recipeId: recipe.identifier,
           recipeName: recipe.name,
+          eventId: event_id,
+          eventDate: event_date,
         });
 
         return {
