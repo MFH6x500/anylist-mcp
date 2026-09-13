@@ -4,7 +4,7 @@ A [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) server that c
 
 ## Features
 
-- **Shopping Lists** — View lists, check items, add freeform items or recipe ingredients
+- **Shopping Lists** — View lists and item categories, assign categories, add freeform items or recipe ingredients
 - **Recipes** — Search and retrieve full recipe details including ingredients and steps
 - **Meal Planning** — View and schedule meals on your AnyList calendar
 - **Grocery Helpers** — Add ingredients from one or multiple recipes to a list with duplicate handling
@@ -84,7 +84,9 @@ ANYLIST_EMAIL=you@example.com ANYLIST_PASSWORD=secret npm run dev
 | Tool | Description |
 |---|---|
 | `get_lists` | List all shopping lists with item counts |
-| `get_list_items` | Get all items on a specific list |
+| `get_list_items` | Get all items on a specific list, including categoryMatchId and categoryName |
+| `get_categories` | Get account category names and match IDs, including custom categories |
+| `set_item_category` | Assign an existing item to a category, or return it to Other |
 | `add_item_to_list` | Add a freeform item to a list (with duplicate checking) |
 | `add_ingredient_to_list` | Add a recipe ingredient to a list with proper categorization |
 
@@ -110,6 +112,44 @@ ANYLIST_EMAIL=you@example.com ANYLIST_PASSWORD=secret npm run dev
 | `add_meal_plan_event` | Schedule a recipe or event on a specific day |
 
 ## Tool Details
+
+### `get_categories` and `set_item_category`
+
+Call `get_categories` to discover category names and `categoryMatchId` values.
+The category record's `id` is different from the match ID used to assign items.
+Names and match IDs come from the account, including its custom categories;
+the server does not guess aisle IDs from names.
+
+To categorise an item, call `set_item_category` with:
+
+- `list_name` (required): exact shopping list name.
+- `item_id` (required): the item's `id` returned by `get_list_items`.
+- Exactly one of `category_name` (exact name, ignoring case and surrounding
+  whitespace) or `category_match_id` (a `categoryMatchId` from `get_categories`).
+
+Example: `{"list_name":"Groceries","item_id":"<item-id>","category_name":"Dairy"}`.
+Use the same tool with `category_name: "Other"` to undo an assignment, or choose
+another category. Repeating the current assignment does not send another write.
+Unknown categories, ambiguous category names and duplicate list names are refused.
+The tool changes only the selected item's category; it does not create categories
+or categorise other items automatically. Account categories can be hidden or
+ordered differently by a list's display settings, which this tool does not change.
+
+`get_list_items` now includes `categoryMatchId` and `categoryName`; an unmapped
+match ID remains visible with a null name. Saving errors are reported as tool
+errors. A later call refreshes the item before retrying.
+
+Category discovery uses `_getUserData` from the lockfile-pinned `anylist` library,
+because that library has no public category reader. Keep the category tests when
+upgrading it. `npm test` builds TypeScript and runs the MCP protocol tests with
+synthetic protobuf responses and captured HTTP writes. These cover the actual
+library's item setter/save operation, custom categories, ambiguity, retries and
+returning to Other; they never connect to a real account.
+
+After landing this branch, build the deployed connector with `npm ci` and
+`npm run build`, then restart or reconnect its MCP client to discover the new
+tools. Repeat on every machine using a separate connector checkout. Building a
+private worktree does not update an already-running server.
 
 ### `add_item_to_list`
 

@@ -4,6 +4,81 @@ import { AnyListClient } from '../anylist-client.js';
 
 export function registerListTools(server: McpServer) {
   server.registerTool(
+    'get_categories',
+    {
+      title: 'Get Categories',
+      description: 'Get account category names and categoryMatchId values, including custom categories. Use these match IDs with set_item_category; record IDs are different.',
+      inputSchema: z.object({}),
+      annotations: { readOnlyHint: true },
+    },
+    async () => {
+      try {
+        const categories = await AnyListClient.getInstance().getCategories();
+        return { content: [{ type: 'text', text: JSON.stringify(categories, null, 2) }] };
+      } catch (error) {
+        return {
+          content: [{ type: 'text', text: `Error fetching categories: ${error instanceof Error ? error.message : String(error)}` }],
+          isError: true,
+        };
+      }
+    },
+  );
+
+  server.registerTool(
+    'set_item_category',
+    {
+      title: 'Set Item Category',
+      description: 'Assign an existing shopping-list item to an account category. Use an item ID from get_list_items and exactly one category selector: an exact name (case-insensitive) or category_match_id from get_categories. Can also move an item back to Other.',
+      inputSchema: z.object({
+        list_name: z.string().min(1).describe('Exact shopping list name'),
+        item_id: z.string().min(1).describe('Item ID from get_list_items'),
+        category_name: z.string().trim().min(1).optional().describe('Exact category name, ignoring case'),
+        category_match_id: z.string().min(1).optional().describe('categoryMatchId from get_categories, not the category record ID'),
+      }),
+      annotations: { destructiveHint: false, idempotentHint: true },
+    },
+    async ({ list_name, item_id, category_name, category_match_id }) => {
+      try {
+        if ((category_name === undefined) === (category_match_id === undefined)) {
+          throw new Error('Provide exactly one of category_name or category_match_id');
+        }
+        const client = AnyListClient.getInstance();
+        // Refresh the item and category metadata together before every mutation,
+        // including retries after an uncertain save response.
+        const lists = await client.getLists();
+        const matchingLists = lists.filter((l) => l.name === list_name);
+        if (matchingLists.length !== 1) {
+          throw new Error(matchingLists.length ? `Ambiguous list name: "${list_name}"` : `List not found: "${list_name}"`);
+        }
+        const item = matchingLists[0].getItemById(item_id);
+        if (!item) throw new Error(`Item not found on "${list_name}": ${item_id}`);
+        const categories = await client.getCategories(false);
+        const matches = categories.filter((c) => category_match_id !== undefined
+          ? c.categoryMatchId === category_match_id
+          : c.name.trim().toLowerCase() === category_name!.toLowerCase());
+        const matchIds = new Set(matches.map((c) => c.categoryMatchId));
+        if (matchIds.size === 0) throw new Error('Category not found. Use get_categories for available names and match IDs.');
+        if (matchIds.size > 1) throw new Error('Ambiguous category name. Use category_match_id from get_categories.');
+        const category = matches[0];
+        const changed = item.categoryMatchId !== category.categoryMatchId;
+        if (changed) {
+          item.categoryMatchId = category.categoryMatchId;
+          await item.save();
+        }
+        return { content: [{ type: 'text', text: JSON.stringify({
+          itemId: item.identifier, listName: list_name,
+          categoryMatchId: category.categoryMatchId, categoryName: category.name, changed,
+        }, null, 2) }] };
+      } catch (error) {
+        return {
+          content: [{ type: 'text', text: `Error setting item category: ${error instanceof Error ? error.message : String(error)}` }],
+          isError: true,
+        };
+      }
+    },
+  );
+
+  server.registerTool(
     'get_lists',
     {
       title: 'Get Lists',
@@ -56,12 +131,15 @@ export function registerListTools(server: McpServer) {
           };
         }
 
+        const categories = await client.getCategories(false);
         const result = list.items.map((i) => ({
           id: i.identifier,
           name: i.name,
           quantity: i.quantity ?? null,
           details: i.details ?? null,
           checked: i.checked,
+          categoryMatchId: i.categoryMatchId,
+          categoryName: categories.find((c) => c.categoryMatchId === i.categoryMatchId)?.name ?? null,
         }));
 
         return {

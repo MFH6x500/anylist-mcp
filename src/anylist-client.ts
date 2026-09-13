@@ -45,6 +45,20 @@ export class AnyListClient {
     return this.withReconnect(() => this.client.getLists());
   }
 
+  async getCategories(refreshCache = true) {
+    return this.withReconnect(async () => {
+      // Reuse the pinned library's decoded response, authentication and cache.
+      // Category record IDs are NOT the match IDs accepted by Item.save().
+      const data = await this.client._getUserData(refreshCache);
+      if (!data.userCategoriesResponse) {
+        throw new Error('Category metadata unavailable from AnyList');
+      }
+      return data.userCategoriesResponse.categories
+        .filter((c) => c.name && c.categoryMatchId)
+        .map((c) => ({ id: c.identifier, name: c.name!, categoryMatchId: c.categoryMatchId! }));
+    });
+  }
+
   getListByName(name: string) {
     return this.client.getListByName(name);
   }

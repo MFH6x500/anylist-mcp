@@ -14,6 +14,16 @@ declare module 'anylist' {
     checked?: boolean;
   }
 
+  interface UserCategory {
+    identifier: string;
+    name: string | null;
+    categoryMatchId: string | null;
+  }
+
+  interface UserData {
+    userCategoriesResponse: { categories: UserCategory[] } | null;
+  }
+
   class Item {
     identifier: string;
     listId: string;
@@ -100,6 +110,8 @@ declare module 'anylist' {
     teardown(): void;
 
     getLists(refreshCache?: boolean): Promise<List[]>;
+    // The pinned library decodes categories but does not expose a public reader.
+    _getUserData(refreshCache?: boolean): Promise<UserData>;
     getListById(identifier: string): List | undefined;
     getListByName(name: string): List | undefined;
 
