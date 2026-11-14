@@ -1,0 +1,133 @@
+{
+  "PBUserDataResponse": {
+    "fields": {
+      "shoppingListsResponse": {
+        "newLists": [
+          {
+            "identifier": "list",
+            "name": "Groceries",
+            "items": [
+              {
+                "identifier": "item",
+                "listId": "list",
+                "name": "Milk",
+                "checked": false,
+                "details": "Fixture",
+                "quantityPb": {
+                  "rawQuantity": "1 1/2 cups"
+                },
+                "categoryAssignments": [
+                  {
+                    "identifier": "assign",
+                    "categoryGroupId": "group",
+                    "categoryId": "dairy"
+                  }
+                ],
+                "storeIds": [
+                  "store"
+                ],
+                "serverModTime": 123.5
+              }
+            ],
+            "logicalClockTime": "9007199254740993"
+          }
+        ]
+      },
+      "starterListsResponse": {
+        "recentItemListsResponse": {},
+        "favoriteItemListsResponse": {}
+      },
+      "userCategoriesResponse": {
+        "identifier": "cats",
+        "categories": [
+          {
+            "identifier": "dairy",
+            "name": "Dairy",
+            "categoryMatchId": "dairy"
+          }
+        ]
+      },
+      "recipeDataResponse": {
+        "recipeDataId": "recipes",
+        "recipes": [
+          {
+            "identifier": "recipe",
+            "name": "Bread",
+            "ingredients": [
+              {
+                "identifier": "ingredient",
+                "name": "Flour",
+                "quantity": "2 cups"
+              }
+            ],
+            "preparationSteps": [
+              "Mix"
+            ],
+            "creationTimestamp": 123.5
+          }
+        ]
+      },
+      "mealPlanningCalendarResponse": {
+        "calendarId": "calendar",
+        "events": [
+          {
+            "identifier": "event",
+            "calendarId": "calendar",
+            "title": "Dinner",
+            "date": "2026-11-14"
+          }
+        ],
+        "labels": []
+      }
+    },
+    "base64": "CnQKcgoEbGlzdBoJR3JvY2VyaWVzIlYKBGl0ZW0RAAAAAADgXkAaBGxpc3QiBE1pbGsqB0ZpeHR1cmUwAIIBBXN0b3JlogEWCgZhc3NpZ24SBWdyb3VwGgVkYWlyeaoBDBoKMSAxLzIgY3Vwc1CBgICAgICAEBpGGjsKBnJlY2lwZRoFQnJlYWRCGzIKaW5ncmVkaWVudBIFRmxvdXIaBjIgY3Vwc0oDTWl4gQEAAAAAAOBeQEoHcmVjaXBlcyIxCghjYWxlbmRhciIlCgVldmVudBoIY2FsZW5kYXIiCjIwMjYtMTEtMTQqBkRpbm5lcjIdCgRjYXRzIhUKBWRhaXJ5GgVEYWlyeTIFZGFpcnk6BBIAGgA="
+  },
+  "PBListOperationList": {
+    "fields": {
+      "operations": [
+        {
+          "metadata": {
+            "operationId": "operation",
+            "handlerId": "add-shopping-list-item",
+            "userId": "user"
+          },
+          "listId": "list",
+          "listItemId": "item",
+          "listItem": {
+            "identifier": "item",
+            "listId": "list",
+            "name": "Milk",
+            "quantityPb": {
+              "rawQuantity": "2 lbs"
+            },
+            "deprecatedQuantity": "2 lbs",
+            "checked": false
+          }
+        }
+      ]
+    },
+    "base64": "Cl8KKQoJb3BlcmF0aW9uEhZhZGQtc2hvcHBpbmctbGlzdC1pdGVtGgR1c2VyEgRsaXN0GgRpdGVtMiYKBGl0ZW0aBGxpc3QiBE1pbGswAKoBBxoFMiBsYnOSAQUyIGxicw=="
+  },
+  "PBCalendarOperationList": {
+    "fields": {
+      "operations": [
+        {
+          "metadata": {
+            "operationId": "operation",
+            "handlerId": "create-calendar-event",
+            "userId": "user"
+          },
+          "calendarId": "calendar",
+          "updatedEvent": {
+            "identifier": "event",
+            "calendarId": "calendar",
+            "title": "Dinner",
+            "date": "2026-11-14",
+            "recipeId": "recipe"
+          }
+        }
+      ]
+    },
+    "base64": "CmMKKAoJb3BlcmF0aW9uEhVjcmVhdGUtY2FsZW5kYXItZXZlbnQaBHVzZXISCGNhbGVuZGFyGi0KBWV2ZW50GghjYWxlbmRhciIKMjAyNi0xMS0xNCoGRGlubmVyOgZyZWNpcGU="
+  }
+}

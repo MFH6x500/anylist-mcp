@@ -142,8 +142,8 @@ category. An error after sending a write does not imply that it was rolled back;
 a later call refreshes the item before retrying.
 
 Category discovery uses `_getUserData` from the lockfile-pinned `anylist` library,
-because that library has no public category reader. Keep the category tests when
-upgrading it. `npm test` builds TypeScript and runs the MCP protocol tests with
+because that library has no public category reader. Its retired protobuf API is supplied by the compatibility adapter described below.
+Keep the category tests when upgrading it. `npm test` builds TypeScript and runs the MCP protocol tests with
 synthetic protobuf responses and captured HTTP writes. These cover the actual
 library's protobuf encoding and multipart request, custom categories, ambiguity,
 ignored writes, read-back failures, retries and returning to Other; they never
@@ -204,7 +204,7 @@ Add all ingredients from a single recipe to a list. Handles duplicates: skips it
 
 Batch version — add ingredients from multiple recipes at once. Deduplicates across recipes.
 
-- `recipe_names` or `recipe_ids` (one required, array)
+- `recipe_names` or `recipe_ids` (one required, array; at most 100 entries in each array, at most 4096 characters per entry)
 - `list_name` (optional, default: "Groceries")
 
 ### `get_recipe_details`
@@ -225,3 +225,34 @@ Schedule a recipe or titled event on the meal plan calendar.
 ## License
 
 ISC
+
+## Dependency maintenance and input limits
+
+Install the full checkout with `npm ci`, then `npm run build`. Include `vendor/`
+when packaging or copying the checkout; copying only `dist/` is insufficient.
+Reconnect the MCP client after deployment. Each machine's connector installation
+must be updated separately.
+
+| Component | Purpose and maintenance contract |
+|---|---|
+| `src/input-limits.ts` | Reject recipe arrays above 100 entries before validating their elements; limit each selector to 4096 characters. Split larger batches into separate calls. |
+| `src/index.ts` | Uses the SDK's 1 MiB **buffered incoming stdio** limit. Oversized input closes that connection; reconnect and send a smaller request. A smaller valid call remains possible after an ordinary tool-validation error. Outgoing list results are not truncated. |
+| `vendor/anylist-protobuf` | Adapts only the pinned AnyList library's `newBuilder/import/build`, message constructors, getters/setters, `toBuffer` and `decode` API. Uses patched protobufjs 8.8.1 for wire processing, with its recursion limit and a 16 MiB limit at the decoder/encoder boundary. This byte check is after HTTP buffering, not a download-size guarantee. |
+| `vendor/anylist-uuid` | Implements AnyList's sole `require('uuid/v4')()` call with Node's `crypto.randomUUID()`. Argument-taking UUID forms are deliberately unsupported. |
+| `test/dependencies.test.cjs` and `test/fixtures/protobuf-v5.json` | Compare synthetic legacy wire fixtures, optional field presence, 64-bit values, recipe/calendar/ingredient operations, malformed nesting and decoder recovery. Fixtures were generated with the prior lockfile's protobufjs 5.0.3. Wire field ordering may differ without changing values. |
+| `test/input-limits.test.cjs` | Drives the MCP tools and shipped stdio entry point through acceptance, refusal and reconnect/retry. Confirms oversized arrays do not produce one error per element. |
+
+The root `protobufjs` and `uuid` dependencies are local, narrowly scoped adapters,
+not the original packages. The AnyList overrides refer to those root dependencies
+so a clean installation resolves the same implementation. The protobuf adapter's
+`protobufjs-modern` dependency is an npm alias of the maintained runtime, whose
+own dependencies remain in the lockfile and the audit. No advisory is suppressed.
+The schema is AnyList's bundled `definitions.json`, never a caller-supplied schema.
+Do not replace these overrides with a blind major-version override: AnyList still
+calls retired APIs. A future upstream migration can remove the adapters after the
+wire and MCP regression suites pass.
+
+`npm test` runs the complete connector suite without account access. `npm audit`
+checks both runtime and development dependencies; its result is time-dependent
+and should be checked again when preparing a dependency update. A clean audit
+is not a substitute for the input bounds or protocol tests.

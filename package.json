@@ -17,14 +17,23 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.27.1",
+    "@modelcontextprotocol/sdk": "^1.32.2",
     "anylist": "github:davidashman/anylist#feature/add-ingredients",
-    "form-data": "^3.0.4",
-    "zod": "^4.3.6"
+    "form-data": "^3.0.5",
+    "zod": "^4.6.7",
+    "protobufjs": "file:vendor/anylist-protobuf",
+    "uuid": "file:vendor/anylist-uuid"
   },
   "devDependencies": {
     "@types/node": "^25.3.3",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3"
+  },
+  "overrides": {
+    "anylist": {
+      "protobufjs": "$protobufjs",
+      "uuid": "$uuid",
+      "tough-cookie": "^4.1.4"
+    }
   }
 }

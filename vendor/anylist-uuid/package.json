@@ -1,0 +1,7 @@
+{
+  "name": "@anylist-mcp/native-uuid-v4",
+  "version": "1.0.0",
+  "private": true,
+  "main": "v4.js",
+  "exports": { "./v4": "./v4.js" }
+}

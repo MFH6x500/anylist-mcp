@@ -4,6 +4,7 @@ import { registerRecipeTools } from './tools/recipes.js';
 import { registerMealPlanTools } from './tools/meal-plan.js';
 import { registerListTools } from './tools/lists.js';
 import { registerGroceryTools } from './tools/groceries.js';
+import { MAX_MCP_INPUT_BYTES } from './input-limits.js';
 
 async function main() {
   const server = new McpServer({
@@ -16,7 +17,7 @@ async function main() {
   registerListTools(server);
   registerGroceryTools(server);
 
-  const transport = new StdioServerTransport();
+  const transport = new StdioServerTransport(process.stdin, process.stdout, { maxBufferSize: MAX_MCP_INPUT_BYTES });
   await server.connect(transport);
 }
 

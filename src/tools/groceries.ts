@@ -1,6 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import { AnyListClient } from '../anylist-client.js';
+import { recipeSelectors } from '../input-limits.js';
 
 async function addRecipeIngredientsToList(
   client: AnyListClient,
@@ -116,8 +117,8 @@ export function registerGroceryTools(server: McpServer) {
       description:
         'Add ingredients from multiple recipes to a shopping list at once. Defaults to the "Groceries" list. Handles duplicates across recipes: each ingredient is only added once.',
       inputSchema: z.object({
-        recipe_names: z.array(z.string()).optional().describe('Array of recipe names'),
-        recipe_ids: z.array(z.string()).optional().describe('Array of recipe identifiers'),
+        recipe_names: recipeSelectors.optional().describe('Array of recipe names'),
+        recipe_ids: recipeSelectors.optional().describe('Array of recipe identifiers'),
         list_name: z.string().default('Groceries').describe('Target list name (defaults to "Groceries")'),
       }),
     },

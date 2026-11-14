@@ -1,0 +1,7 @@
+{
+  "name": "@anylist-mcp/legacy-protobuf",
+  "version": "1.0.0",
+  "private": true,
+  "main": "index.cjs",
+  "dependencies": { "protobufjs-modern": "npm:protobufjs@8.8.1" }
+}
