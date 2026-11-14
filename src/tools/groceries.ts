@@ -5,7 +5,7 @@ import { AnyListClient } from '../anylist-client.js';
 async function addRecipeIngredientsToList(
   client: AnyListClient,
   recipe: { name: string; ingredients: Array<{ name: string; rawIngredient: string; quantity: string }> },
-  list: { getItemByName(name: string): { checked: boolean; save(): Promise<void> } | undefined; addItem(item: any): Promise<any> },
+  list: Awaited<ReturnType<AnyListClient['getLists']>>[number],
 ): Promise<{ added: string[]; skipped: string[]; unchecked: string[] }> {
   const added: string[] = [];
   const skipped: string[] = [];
@@ -27,11 +27,10 @@ async function addRecipeIngredientsToList(
       continue;
     }
 
-    const item = client.createItem({
+    await client.addItem(list, {
       name: ingredientName,
       quantity: ingredient.quantity || undefined,
     });
-    await list.addItem(item);
     added.push(ingredientName);
   }
 

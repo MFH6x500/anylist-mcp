@@ -90,6 +90,46 @@ export class AnyListClient {
     }
   }
 
+  async getItemQuantities(listId: string): Promise<Map<string, string | null>> {
+    const data = await this.client._getUserData(false);
+    const items = data.shoppingListsResponse.newLists.find((list) => list.identifier === listId)?.items ?? [];
+    return new Map(items.map((item) => {
+      const quantity = item.quantityPb;
+      const text = quantity?.rawQuantity
+        || [quantity?.amount, quantity?.unit].filter(Boolean).join(' ')
+        || item.deprecatedQuantity || null;
+      return [item.identifier, text];
+    }));
+  }
+
+  async addItem(list: Awaited<ReturnType<AnyList['getLists']>>[number], input: { name: string; quantity?: string }) {
+    const identifier = randomUUID().replace(/-/g, '');
+    const quantity = input.quantity || null;
+    // The pinned Item._encode() writes the removed quantity field. Encode the
+    // current schema directly and keep freeform text intact, without guessing units.
+    const item = new this.client.protobuf.ListItem({
+      identifier, listId: list.identifier, name: input.name, checked: false,
+      categoryMatchId: 'other',
+      ...(quantity ? { quantityPb: { rawQuantity: quantity }, deprecatedQuantity: quantity } : {}),
+    });
+    const operation = new this.client.protobuf.PBListOperation({
+      metadata: { operationId: randomUUID(), handlerId: 'add-shopping-list-item', userId: this.client.uid },
+      listId: list.identifier, listItemId: identifier, listItem: item,
+    });
+    const form = new FormData();
+    form.append('operations', new this.client.protobuf.PBListOperationList({ operations: [operation] }).toBuffer());
+    await this.client.client.post('data/shopping-lists/update', { body: form });
+    const verified = (await this.getLists()).find((entry) => entry.identifier === list.identifier)?.getItemById(identifier);
+    const quantities = await this.getItemQuantities(list.identifier);
+    if (!verified || verified.name !== input.name || quantities.get(identifier) !== quantity) {
+      throw new Error('Added item or quantity was not confirmed on a fresh read; refresh the list before retrying');
+    }
+    // Bulk recipes retain this List object across additions. Keep its duplicate
+    // lookup current even though getLists() replaced the client's snapshot.
+    if (!list.getItemById(identifier)) list.items.push(verified);
+    return verified;
+  }
+
   getListByName(name: string) {
     return this.client.getListByName(name);
   }
@@ -104,10 +144,6 @@ export class AnyListClient {
 
   async createEvent(event: { title?: string; date?: Date | string; recipeId?: string; labelId?: string }) {
     return this.withReconnect(() => this.client.createEvent(event));
-  }
-
-  createItem(item: { name: string; quantity?: string }) {
-    return this.client.createItem(item);
   }
 
   get labels() {

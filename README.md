@@ -84,10 +84,10 @@ ANYLIST_EMAIL=you@example.com ANYLIST_PASSWORD=secret npm run dev
 | Tool | Description |
 |---|---|
 | `get_lists` | List all shopping lists with item counts |
-| `get_list_items` | Get all items on a specific list, including categoryMatchId and categoryName |
+| `get_list_items` | Get list items with quantities, categoryMatchId and categoryName |
 | `get_categories` | Get account category names and match IDs, including custom categories |
 | `set_item_category` | Assign an existing item to a category with fresh-read verification, or return it to Other |
-| `add_item_to_list` | Add a freeform item to a list (with duplicate checking) |
+| `add_item_to_list` | Add a freeform item and quantity with duplicate checking and fresh-read verification |
 | `add_ingredient_to_list` | Add a recipe ingredient to a list with proper categorization |
 
 ### Recipes
@@ -164,7 +164,26 @@ Add a freeform item to a shopping list. If the item already exists and is checke
 
 - `item_name` (required) — Name of the item
 - `list_name` (required) — Target list name
-- `quantity` (optional) — e.g. "2 lbs", "3"
+- `quantity` (optional) — e.g. "2 lbs", "3", "1 1/2 cups" or "to taste".
+
+Quantities are preserved as freeform text in `quantityPb.rawQuantity`, with
+`deprecatedQuantity` retained for older readers. Empty or omitted quantities
+mean no quantity. `get_list_items` reads raw quantity text, structured amount
+and unit fields, or the older quantity field as available. The connector does
+not infer units or convert amounts.
+
+A new item is reported as added only after a fresh read confirms its name and
+quantity. An error after sending a write does not imply rollback; retrying first
+refreshes the list and uses the existing duplicate checks. Existing items retain
+their quantities, including when a checked item is unchecked. The two bulk
+recipe tools use the same writer, preserving ingredient quantities and keeping
+duplicate handling current across a batch.
+
+The pinned library's `Item._encode()` uses a removed `quantity` field. The
+connector encodes the current protobuf shape directly instead. `npm test`
+includes MCP-to-protobuf quantity round trips, structured and older quantity
+reads, duplicate/unchecked items, both bulk recipe tools and failed writes.
+It uses synthetic data and never connects to an account.
 
 ### `add_ingredient_to_list`
 

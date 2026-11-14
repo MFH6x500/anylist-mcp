@@ -25,6 +25,8 @@ declare module 'anylist' {
     identifier: string;
     categoryMatchId: string;
     category: string;
+    quantityPb: { rawQuantity?: string | null; amount?: string | null; unit?: string | null } | null;
+    deprecatedQuantity: string | null;
     toBuffer(): Buffer;
   }
 
@@ -112,8 +114,11 @@ declare module 'anylist' {
     uid: string;
     client: { post(path: string, options: { body: import("form-data") }): Promise<unknown> };
     protobuf: {
-      ListItem: { decode(buffer: Buffer): DecodedItem };
-      PBListOperation: new (fields: { metadata: { operationId: string; handlerId: string; userId: string }; listId: string; listItemId: string; listItem: DecodedItem; originalValue: string }) => object;
+      ListItem: {
+        new (fields: { identifier: string; listId: string; name: string; checked: boolean; categoryMatchId: string; quantityPb?: { rawQuantity: string }; deprecatedQuantity?: string }): DecodedItem;
+        decode(buffer: Buffer): DecodedItem;
+      };
+      PBListOperation: new (fields: { metadata: { operationId: string; handlerId: string; userId: string }; listId: string; listItemId: string; listItem: DecodedItem; originalValue?: string }) => object;
       PBListOperationList: new (fields: { operations: object[] }) => { toBuffer(): Buffer };
     };
     lists: List[];

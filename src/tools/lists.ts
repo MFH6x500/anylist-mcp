@@ -131,10 +131,11 @@ export function registerListTools(server: McpServer) {
         }
 
         const categories = await client.getCategories(false);
+        const quantities = await client.getItemQuantities(list.identifier);
         const result = list.items.map((i) => ({
           id: i.identifier,
           name: i.name,
-          quantity: i.quantity ?? null,
+          quantity: quantities.get(i.identifier) ?? null,
           details: i.details ?? null,
           checked: i.checked,
           categoryMatchId: i.categoryMatchId,
@@ -192,8 +193,7 @@ export function registerListTools(server: McpServer) {
           };
         }
 
-        const item = client.createItem({ name: item_name, quantity });
-        await list.addItem(item);
+        await client.addItem(list, { name: item_name, quantity });
 
         return {
           content: [{ type: 'text', text: `Added "${item_name}"${quantity ? ` (${quantity})` : ''} to "${list_name}"` }],
