@@ -1,7 +1,7 @@
 const { test, beforeEach, mock } = require('node:test');
 const assert = require('node:assert/strict');
 const AnyList = require('anylist');
-const Item = require('anylist/lib/item');
+const { AnyListClient } = require('../dist/anylist-client.js');
 const { McpServer } = require('@modelcontextprotocol/sdk/server/mcp.js');
 const { Client } = require('@modelcontextprotocol/sdk/client/index.js');
 const { InMemoryTransport } = require('@modelcontextprotocol/sdk/inMemory.js');
@@ -9,30 +9,30 @@ const { registerListTools } = require('../dist/tools/lists.js');
 
 process.env.ANYLIST_EMAIL = 'fixture@example.invalid';
 process.env.ANYLIST_PASSWORD = 'fixture-only';
-let data, writes, failWrite, failRead;
+let data, writes, failWrite, failRead, ignoreWrite, failVerification;
 beforeEach(() => {
-  writes = []; failWrite = false; failRead = false;
+  writes = []; failWrite = false; failRead = false; ignoreWrite = false; failVerification = false;
   data = {
     shoppingListsResponse: { newLists: [{ identifier: 'list-fixture', name: 'Groceries', items: [
-      { identifier: 'item-fixture', listId: 'list-fixture', name: 'Milk', details: 'Fixture', checked: false, categoryMatchId: 'other' },
+      { identifier: 'item-fixture', listId: 'list-fixture', name: 'Milk', details: 'Fixture', checked: false, storeIds: ['store-fixture'], categoryAssignments: [{ identifier: 'assignment-fixture', categoryGroupId: 'group-fixture', categoryId: 'category-fixture' }], categoryMatchId: 'other' },
     ] }] },
     starterListsResponse: { recentItemListsResponse: {}, favoriteItemListsResponse: {} },
     mealPlanningCalendarResponse: { calendarId: 'calendar-fixture' },
     userCategoriesResponse: { identifier: 'categories-fixture', categories: [
       { identifier: 'category-other', name: 'Other', categoryMatchId: 'other' },
-      { identifier: 'category-dairy', name: 'Dairy', categoryMatchId: 'dairy' },
+      { identifier: 'category-dairy', name: 'Dairy', categoryMatchId: 'dairy', systemCategory: 'dairy' },
       { identifier: 'category-custom', name: 'Custom Aisle', categoryMatchId: 'custom-match-42' },
     ] },
   };
 });
 
 // Replace only authentication and HTTP. Keep the library's real protobuf decoder,
-// getLists, Item setter/save and multipart request, and the MCP protocol itself.
+// getLists, protobuf encoding, multipart request, and the MCP protocol itself.
 mock.method(AnyList.prototype, 'login', async function () {
   this.uid = 'user-fixture';
   this.client = { post: async (path, options) => {
     if (path === 'data/user-data/get') {
-      if (failRead) throw new Error('Fixture read failure');
+      if (failRead || (failVerification && writes.length)) throw new Error('Fixture read failure');
       return { body: new this.protobuf.PBUserDataResponse(data).toBuffer() };
     }
     assert.equal(path, 'data/shopping-lists/update');
@@ -45,7 +45,13 @@ mock.method(AnyList.prototype, 'login', async function () {
       writes.push(op);
       if (op.metadata.handlerId === 'set-list-item-category-match-id') {
         const list = data.shoppingListsResponse.newLists.find(l => l.identifier === op.listId);
-        list.items.find(i => i.identifier === op.listItemId).categoryMatchId = op.updatedValue;
+        // b4924: the service reads listItem, not updatedValue. HTTP success
+        // alone does not establish persistence.
+        if (!ignoreWrite && op.listItem) {
+          const item = list.items.find(i => i.identifier === op.listItemId);
+          item.categoryMatchId = op.listItem.categoryMatchId;
+          item.category = op.listItem.category;
+        }
       }
     }
     return { body: Buffer.alloc(0) };
@@ -82,15 +88,21 @@ async function wireWitness(call) {
     const op = writes.at(-1);
     assert.equal(op.metadata.handlerId, 'set-list-item-category-match-id');
     assert.equal(op.listId, 'list-fixture'); assert.equal(op.listItemId, 'item-fixture');
-    assert.equal(op.updatedValue, expected);
+    assert.equal(op.updatedValue, null);
+    assert.equal(op.listItem.categoryMatchId, expected);
+    assert.equal(op.originalValue, expected);
+    assert.equal(op.listItem.details, 'Fixture');
+    assert.deepEqual(op.listItem.storeIds, ['store-fixture']);
+    assert.equal(op.listItem.categoryAssignments[0].categoryId, 'category-fixture');
+    assert.equal(op.listItem.category, expected === 'dairy' ? 'dairy' : 'other');
     const [item] = resultJSON(await call('get_list_items', { list_name: 'Groceries' }));
     assert.equal(item.categoryMatchId, expected);
     assert.equal(item.quantity, null); assert.equal(item.details, 'Fixture'); assert.equal(item.checked, false);
   }
 }
-test('real MCP to Item.save wire round trip and recategorisation back to Other', () => withTools(wireWitness));
+test('real MCP category wire round trip and recategorisation back to Other', () => withTools(wireWitness));
 test('wire witness detects a bypassed save', () => withTools(async call => {
-  const stub = mock.method(Item.prototype, 'save', async () => {});
+  const stub = mock.method(AnyListClient.prototype, 'setItemCategory', async () => {});
   try { await assert.rejects(() => wireWitness(call), assert.AssertionError); }
   finally { stub.mock.restore(); }
 }));
@@ -98,7 +110,8 @@ test('wire witness detects a bypassed save', () => withTools(async call => {
 test('explicit match ID selects a custom category and repeat is a no-op', () => withTools(async call => {
   const args = { ...target, category_match_id: 'custom-match-42' };
   assert.ok(!(await call('set_item_category', args)).isError);
-  assert.equal(writes[0].updatedValue, 'custom-match-42');
+  assert.equal(writes[0].listItem.categoryMatchId, 'custom-match-42');
+  assert.equal(writes[0].listItem.category, 'other');
   assert.ok(!(await call('set_item_category', args)).isError);
   assert.equal(writes.length, 1);
 }));
@@ -138,3 +151,14 @@ test('missing category metadata and read failures are reported', () => withTools
   assert.equal((await call('get_categories')).isError, true);
   assert.equal(writes.length, 0);
 }));
+
+for (const failure of ['ignored', 'readback']) {
+  test(`successful HTTP with ${failure} failure never reports category success`, () => withTools(async call => {
+    ignoreWrite = failure === 'ignored'; failVerification = failure === 'readback';
+    const result = await call('set_item_category', { ...target, category_name: 'Dairy' });
+    assert.equal(result.isError, true);
+    ignoreWrite = false; failVerification = false;
+    const retry = resultJSON(await call('set_item_category', { ...target, category_name: 'Dairy' }));
+    assert.equal(retry.categoryMatchId, 'dairy');
+  }));
+}

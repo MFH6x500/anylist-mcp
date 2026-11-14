@@ -1,4 +1,6 @@
 import AnyList from 'anylist';
+import FormData from 'form-data';
+import { randomUUID } from 'node:crypto';
 
 let instance: AnyListClient | null = null;
 
@@ -57,6 +59,35 @@ export class AnyListClient {
         .filter((c) => c.name && c.categoryMatchId)
         .map((c) => ({ id: c.identifier, name: c.name!, categoryMatchId: c.categoryMatchId! }));
     });
+  }
+
+  async setItemCategory(listId: string, itemId: string, categoryMatchId: string) {
+    // Use the complete decoded item: Item.toJSON() drops fields such as
+    // categoryAssignments, prices and store IDs. The library's Item.save()
+    // sends updatedValue, which this handler ignores (b4924).
+    const data = await this.client._getUserData(false);
+    const source = data.shoppingListsResponse.newLists
+      .find((list) => list.identifier === listId)?.items
+      .find((item) => item.identifier === itemId);
+    if (!source) throw new Error('Item unavailable in the refreshed list snapshot');
+    const category = data.userCategoriesResponse?.categories
+      .find((entry) => entry.categoryMatchId === categoryMatchId);
+    if (!category) throw new Error('Category unavailable in the refreshed snapshot');
+    const item = this.client.protobuf.ListItem.decode(source.toBuffer());
+    item.categoryMatchId = categoryMatchId;
+    item.category = category.systemCategory || 'other';
+    const operation = new this.client.protobuf.PBListOperation({
+      metadata: { operationId: randomUUID(), handlerId: 'set-list-item-category-match-id', userId: this.client.uid },
+      listId, listItemId: itemId, listItem: item, originalValue: categoryMatchId,
+    });
+    const form = new FormData();
+    form.append('operations', new this.client.protobuf.PBListOperationList({ operations: [operation] }).toBuffer());
+    // Do not automatically replay an uncertain mutation after reconnecting.
+    await this.client.client.post('data/shopping-lists/update', { body: form });
+    const verified = (await this.getLists()).find((list) => list.identifier === listId)?.getItemById(itemId);
+    if (!verified || verified.categoryMatchId !== categoryMatchId) {
+      throw new Error('Category write did not persist on a fresh read; refresh the list before retrying');
+    }
   }
 
   getListByName(name: string) {

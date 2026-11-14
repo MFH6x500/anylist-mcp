@@ -18,9 +18,18 @@ declare module 'anylist' {
     identifier: string;
     name: string | null;
     categoryMatchId: string | null;
+    systemCategory: string | null;
+  }
+
+  interface DecodedItem {
+    identifier: string;
+    categoryMatchId: string;
+    category: string;
+    toBuffer(): Buffer;
   }
 
   interface UserData {
+    shoppingListsResponse: { newLists: { identifier: string; items: DecodedItem[] }[] };
     userCategoriesResponse: { categories: UserCategory[] } | null;
   }
 
@@ -100,6 +109,13 @@ declare module 'anylist' {
   }
 
   class AnyList extends EventEmitter {
+    uid: string;
+    client: { post(path: string, options: { body: import("form-data") }): Promise<unknown> };
+    protobuf: {
+      ListItem: { decode(buffer: Buffer): DecodedItem };
+      PBListOperation: new (fields: { metadata: { operationId: string; handlerId: string; userId: string }; listId: string; listItemId: string; listItem: DecodedItem; originalValue: string }) => object;
+      PBListOperationList: new (fields: { operations: object[] }) => { toBuffer(): Buffer };
+    };
     lists: List[];
     recipes: Recipe[];
     mealPlanningCalendarEvents: MealPlanningCalendarEvent[];

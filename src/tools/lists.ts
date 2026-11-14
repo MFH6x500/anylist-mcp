@@ -28,7 +28,7 @@ export function registerListTools(server: McpServer) {
     'set_item_category',
     {
       title: 'Set Item Category',
-      description: 'Assign an existing shopping-list item to an account category. Use an item ID from get_list_items and exactly one category selector: an exact name (case-insensitive) or category_match_id from get_categories. Can also move an item back to Other.',
+      description: 'Assign an existing shopping-list item to an account category. Use an item ID from get_list_items and exactly one category selector: an exact name (case-insensitive) or category_match_id from get_categories. Verifies writes with a fresh read. Can also move an item back to Other.',
       inputSchema: z.object({
         list_name: z.string().min(1).describe('Exact shopping list name'),
         item_id: z.string().min(1).describe('Item ID from get_list_items'),
@@ -62,8 +62,7 @@ export function registerListTools(server: McpServer) {
         const category = matches[0];
         const changed = item.categoryMatchId !== category.categoryMatchId;
         if (changed) {
-          item.categoryMatchId = category.categoryMatchId;
-          await item.save();
+          await client.setItemCategory(matchingLists[0].identifier, item.identifier, category.categoryMatchId);
         }
         return { content: [{ type: 'text', text: JSON.stringify({
           itemId: item.identifier, listName: list_name,

@@ -19,6 +19,7 @@
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.27.1",
     "anylist": "github:davidashman/anylist#feature/add-ingredients",
+    "form-data": "^3.0.4",
     "zod": "^4.3.6"
   },
   "devDependencies": {

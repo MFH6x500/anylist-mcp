@@ -86,7 +86,7 @@ ANYLIST_EMAIL=you@example.com ANYLIST_PASSWORD=secret npm run dev
 | `get_lists` | List all shopping lists with item counts |
 | `get_list_items` | Get all items on a specific list, including categoryMatchId and categoryName |
 | `get_categories` | Get account category names and match IDs, including custom categories |
-| `set_item_category` | Assign an existing item to a category, or return it to Other |
+| `set_item_category` | Assign an existing item to a category with fresh-read verification, or return it to Other |
 | `add_item_to_list` | Add a freeform item to a list (with duplicate checking) |
 | `add_ingredient_to_list` | Add a recipe ingredient to a list with proper categorization |
 
@@ -136,15 +136,22 @@ or categorise other items automatically. Account categories can be hidden or
 ordered differently by a list's display settings, which this tool does not change.
 
 `get_list_items` now includes `categoryMatchId` and `categoryName`; an unmapped
-match ID remains visible with a null name. Saving errors are reported as tool
-errors. A later call refreshes the item before retrying.
+match ID remains visible with a null name. Saving errors, ignored writes and failed verification reads are reported as tool
+errors. Success after a write requires a fresh server read to return the requested
+category. An error after sending a write does not imply that it was rolled back;
+a later call refreshes the item before retrying.
 
 Category discovery uses `_getUserData` from the lockfile-pinned `anylist` library,
 because that library has no public category reader. Keep the category tests when
 upgrading it. `npm test` builds TypeScript and runs the MCP protocol tests with
 synthetic protobuf responses and captured HTTP writes. These cover the actual
-library's item setter/save operation, custom categories, ambiguity, retries and
-returning to Other; they never connect to a real account.
+library's protobuf encoding and multipart request, custom categories, ambiguity,
+ignored writes, read-back failures, retries and returning to Other; they never
+connect to a real account. The category writer sends the full decoded item in
+`listItem` and the match ID in `originalValue`. The pinned library's generic
+`Item.save()` puts it in `updatedValue`, which the service ignores. Other item
+fields, including per-list category assignments, are preserved; this tool still
+changes the account category match ID, not per-list category-group settings.
 
 After landing this branch, build the deployed connector with `npm ci` and
 `npm run build`, then restart or reconnect its MCP client to discover the new
